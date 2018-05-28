@@ -1,10 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
+	"fmt"
 
 	"github.com/streadway/amqp"
 )
+
+type Message struct {
+    Name string
+    JobTitle string
+}
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -22,25 +29,29 @@ func main() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"hello", // name
-		false,   // durable
-		false,   // delete when unused
-		false,   // exclusive
-		false,   // no-wait
-		nil,     // arguments
+		"task_queue", // name
+		true,         // durable
+		false,        // delete when unused
+		false,        // exclusive
+		false,        // no-wait
+		nil,          // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
-	body := "hello"
+	message := Message{"Filipe", "Software Developer"}
+  body, _ := json.Marshal(message)
+  fmt.Println(string(body))
+
 	err = ch.Publish(
 		"",     // exchange
 		q.Name, // routing key
 		false,  // mandatory
-		false,  // immediate
+		false,
 		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(body),
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(body),
 		})
-	log.Printf(" [x] Sent %s", body)
 	failOnError(err, "Failed to publish a message")
+	log.Printf(" [x] Sent %s", body)
 }
